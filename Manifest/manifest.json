@@ -1,0 +1,108 @@
+{ 
+   "$schema":"https://developer.microsoft.com/en-us/json-schemas/teams/v1.5/MicrosoftTeams.schema.json",
+   "manifestVersion":"1.5",
+   "version":"1.0.0",
+   "id":"8122b9a6-5589-479f-a41d-2a3df1668b1e",
+   "packageName":"com.microsoft.teams.crowdsourcer",
+   "developer":{ 
+      "name":"<<companyName>>",
+      "websiteUrl":"<<websiteUrl>>",
+      "privacyUrl":"<<privacyUrl>>",
+      "termsOfUseUrl":"<<termsOfUseUrl>>"
+   },
+   "icons":{ 
+      "color":"color.png",
+      "outline":"outline.png"
+   },
+   "name":{ 
+      "short":"Crowdsourcer",
+      "full":"Crowdsourcer Bot"
+   },
+   "description":{ 
+      "short":"QnA bot that works on the concept of crowdsourcing information in teams.",
+      "full":"A friendly Q&A bot that helps a group of people collaborate to obtain voluntary answers to their queries in a fun and transparent manner."
+   },
+   "accentColor":"#152450",
+   "bots":[ 
+      { 
+         "botId":"<<botId>>",
+         "scopes":[ 
+            "team"
+         ],
+         "supportsFiles":false,
+         "isNotificationOnly":false
+      }
+   ],
+   "composeExtensions":[ 
+      { 
+         "botId":"<<botId>>",
+         "canUpdateConfiguration":false,
+         "commands":[ 
+            { 
+               "id":"created",
+               "title":"Recent answers",
+               "description":"Search recent answers",
+               "initialRun":true,
+               "parameters":[ 
+                  { 
+                     "name":"created",
+                     "title":"created",
+                     "description":"Recently created"
+                  }
+               ]
+            },
+            { 
+               "id":"edited",
+               "title":"Recent updates",
+               "description":"Search recent updates",
+               "initialRun":true,
+               "parameters":[ 
+                  { 
+                     "name":"edited",
+                     "title":"edited",
+                     "description":"Recently edited"
+                  }
+               ]
+            },
+            { 
+               "id":"unanswered",
+               "title":"Unanswered",
+               "description":"Search unanswered",
+               "initialRun":true,
+               "parameters":[ 
+                  { 
+                     "name":"unanswered",
+                     "title":"Unanswered",
+                     "description":"Search unanswered question"
+                  }
+               ]
+            },
+            { 
+               "id":"addquestion",
+               "type":"action",
+               "title":"Add a question",
+               "description":"Add a qna pair",
+               "initialRun":true,
+               "fetchTask":true,
+               "context":[ 
+                  "compose"
+               ],
+               "parameters":[ 
+                  { 
+                     "name":"addquestion",
+                     "title":"Add a question",
+                     "description":"Add a qna pair"
+                  }
+               ]
+            }
+         ]
+      }
+   ],
+   "permissions":[ 
+      "identity",
+      "messageTeamMembers"
+   ],
+   "validDomains":[ 
+      "<<validomains>>"
+   ]
+}
