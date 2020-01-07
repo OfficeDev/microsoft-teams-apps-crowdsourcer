@@ -11,14 +11,14 @@ Chatbots are an easy way to provide answers to frequently asked questions by use
 Crowdsourcer Bot helps a group of people (team) collaborate to obtain voluntary answers to their queries in a fun and transparent manner. It works on the principle of tapping on to the crowd intelligence and collective wisdom of the group. Using Crowdsourcer ,you can get your questions answered by relying on the knowledge of a team member. The QnA pairs are stored in a Knowledge Base (KB) and over a period of time ,it will help answer most frequently asked questions.
 
 End-user interacting with Crowdsourcer Bot in a teams context:
-![Asking a question](images/Readme-1.png)
-![Answered question](images/Readme-3.png)
-![Messaging Extension](images/Readme-4.png)
+![Asking a question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-1.png)
+![Answered question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-3.png)
+![Messaging Extension](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-4.png)
 
 
 ## **Legal Notices**
 
-Please read the license terms applicable to this template [here](https://github.com/OfficeDev/microsoft-teams-<<To Do>>/blob/master/LICENSE). In addition to these terms, you agree to the following:
+Please read the license terms applicable to this template [here](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/blob/master/LICENSE). In addition to these terms, you agree to the following:
 
 - You are responsible for complying with all applicable privacy and security regulations, as well as all internal privacy and security policies of your company. You must also include your own privacy statement and terms of use for your app if you choose to deploy or share it broadly.
 
