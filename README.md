@@ -1,19 +1,16 @@
-
-
-
 # Crowdsourcer Bot
 
-| [Documentation](/wiki) | [Deployment guide](/wiki/Deployment-Guide) | [Architecture](/wiki/Solution-Overview) |
+| [Documentation](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki) | [Deployment guide](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/Deployment-Guide) | [Architecture](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/Solution-Overview) |
 | ---- | ---- | ---- |
 
 Chatbots are an easy way to provide answers to frequently asked questions by users. However, most chatbots fail to engage with users in meaningful way because there is no human in the loop when the chatbot fails. 
 
 Crowdsourcer Bot helps a group of people (team) collaborate to obtain voluntary answers to their queries in a fun and transparent manner. It works on the principle of tapping on to the crowd intelligence and collective wisdom of the group. Using Crowdsourcer ,you can get your questions answered by relying on the knowledge of a team member. The QnA pairs are stored in a Knowledge Base (KB) and over a period of time ,it will help answer most frequently asked questions.
 
-End-user interacting with Crowdsourcer Bot in a teams context:
-![Asking a question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-1.png)
-![Answered question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-3.png)
-![Messaging Extension](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/images/Readme-4.png)
+End-user interacting with Crowdsourcer Bot in a teams context
+![Ask question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/images/Readme-1.png)
+![Answered question](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/images/Readme-3.png)
+![Messaging Extension](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/images/Readme-4.png)
 
 
 ## **Legal Notices**
