@@ -4,7 +4,7 @@
   "parameters": {
     "baseResourceName": {
       "minLength": 1,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The base name to use for the resources that will be provisioned."
       }
@@ -12,7 +12,7 @@
     "botClientId": {
       "minLength": 36,
       "maxLength": 36,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The client ID of the bot Azure AD app, e.g., 123e4567-e89b-12d3-a456-426655440000."
       }
@@ -27,7 +27,7 @@
     "appDisplayName": {
       "defaultValue": "Crowdsourcer",
       "minLength": 1,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The app (and bot) display name."
       }
@@ -35,7 +35,7 @@
     "appDescription": {
       "defaultValue": "QnA bot that works on the concept of crowdsourcing information in teams.",
       "minLength": 1,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The app (and bot) description."
       }
@@ -43,7 +43,7 @@
     "appIconUrl": {
       "defaultValue": "https://raw.githubusercontent.com/OfficeDev/microsoft-teams-crowdsourcer-app/master/Manifest/color.png",
       "minLength": 1,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The link to the icon for the app. It must resolve to a PNG file."
       }
@@ -52,7 +52,7 @@
       "defaultValue": "[subscription().tenantId]",
       "minLength": 1,
       "maxLength": 36,
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The ID of the tenant to which the app will be deployed."
       }
@@ -64,7 +64,7 @@
         "Standard",
         "Premium"
       ],
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The pricing tier for the hosting plan."
       }
@@ -76,14 +76,14 @@
         "2",
         "3"
       ],
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The size of the hosting plan (small, medium, or large)."
       }
     },
     "location": {
       "defaultValue": "[resourceGroup().location]",
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "Location for all resources."
       }
@@ -94,7 +94,7 @@
         "F0 (3 managed documents per month, 3 transactions per second, 100 transactions per minute, 50K transactions per month)",
         "S0 ($10 per month for unlimited documents, 3 transactions per second, 100 transactions per minute)"
       ],
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The pricing tier for the QnAMaker service."
       }
@@ -105,21 +105,21 @@
         "F (3 indexes)",
         "B (15 indexes)"
       ],
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The pricing tier for the Azure Search service."
       }
     },
     "gitRepoUrl": {
       "defaultValue": "https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app.git",
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The URL to the GitHub repository to deploy."
       }
     },
     "gitBranch": {
       "defaultValue": "master",
-      "type": "String",
+      "type": "string",
       "metadata": {
         "description": "The branch of the GitHub repository to deploy."
       }
@@ -536,11 +536,11 @@
   ],
   "outputs": {
     "botId": {
-      "type": "String",
+      "type": "string",
       "value": "[parameters('botClientId')]"
     },
     "appDomain": {
-      "type": "String",
+      "type": "string",
       "value": "[variables('botAppDomain')]"
     }
   }
