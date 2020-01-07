@@ -41,7 +41,7 @@
       }
     },
     "appIconUrl": {
-      "defaultValue": "<<TO DO>>",
+      "defaultValue": "https://raw.githubusercontent.com/OfficeDev/microsoft-teams-crowdsourcer-app/master/Manifest/color.png",
       "minLength": 1,
       "type": "String",
       "metadata": {
@@ -111,7 +111,7 @@
       }
     },
     "gitRepoUrl": {
-      "defaultValue": "<<TO DO>>",
+      "defaultValue": "https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app.git",
       "type": "String",
       "metadata": {
         "description": "The URL to the GitHub repository to deploy."
