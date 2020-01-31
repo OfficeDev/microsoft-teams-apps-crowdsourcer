@@ -23,7 +23,6 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
 
         private readonly IConfiguration configuration;
         private readonly SearchIndexClient searchIndexClient;
-        private readonly Lazy<Task> initializeTask;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SearchService"/> class.
@@ -36,7 +35,6 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
                 configuration["SearchServiceName"],
                 IndexName,
                 new SearchCredentials(configuration["SearchServiceKey"]));
-            this.initializeTask = new Lazy<Task>(() => this.InitializeSearchServiceDependency());
         }
 
         /// <summary>
@@ -48,7 +46,6 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         /// <returns>search result list.</returns>
         public async Task<IList<AzureSearchEntity>> GetAzureSearchEntitiesAsync(string searchQuery, string commandId, string teamId)
         {
-            await this.EnsureInitializedAsync();
             IList<AzureSearchEntity> qnaPairs = new List<AzureSearchEntity>();
             SearchParameters searchParameters = default(SearchParameters);
             string searchFilter = string.Empty;
@@ -110,12 +107,13 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         /// <summary>
         /// Creates Index, Data Source and Indexer for search service.
         /// </summary>
-        private async Task InitializeSearchServiceDependency()
+        /// <returns>task.</returns>
+        public async Task InitializeSearchServiceDependency()
         {
             ISearchServiceClient searchClient = this.CreateSearchServiceClient();
             await this.CreateSearchIndexAsync(searchClient);
             await this.CreateDataSourceAsync(searchClient);
-            await this.CreateIndexerAsync(searchClient);
+            await this.CreateOrRunIndexerAsync(searchClient);
         }
 
         /// <summary>
@@ -129,14 +127,14 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         }
 
         /// <summary>
-        /// Creates new SearchIndex with INDEX_NAME provided, if already exists no change happen.
+        /// Creates new SearchIndex with INDEX_NAME provided, if already exists then delete the index and create again.
         /// </summary>
         /// <param name="searchClient">search client.</param>
         private async Task CreateSearchIndexAsync(ISearchServiceClient searchClient)
         {
             if (await searchClient.Indexes.ExistsAsync(IndexName))
             {
-                return;
+                await searchClient.Indexes.DeleteAsync(IndexName);
             }
 
             var definition = new Index()
@@ -148,7 +146,7 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         }
 
         /// <summary>
-        /// Creates new DataSource with DATASOURCE_NAME provided, if already exists no change happen.
+        ///  Creates new DataSource with DATASOURCE_NAME provided, if already exists no change happen.
         /// </summary>
         /// <param name="searchClient">search client.</param>
         private async Task CreateDataSourceAsync(ISearchServiceClient searchClient)
@@ -170,13 +168,14 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         }
 
         /// <summary>
-        /// Creates new Indexer with INDEXER_NAME provided, if already exists no change happen.
+        /// Creates new Indexer or run if it already exists.
         /// </summary>
         /// <param name="searchClient">search client.</param>
-        private async Task CreateIndexerAsync(ISearchServiceClient searchClient)
+        private async Task CreateOrRunIndexerAsync(ISearchServiceClient searchClient)
         {
             if (await searchClient.Indexers.ExistsAsync(IndexName))
             {
+                await searchClient.Indexers.RunAsync(IndexName);
                 return;
             }
 
@@ -192,18 +191,8 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
                 {
                     Configuration = parseConfig,
                 },
-                Schedule = new IndexingSchedule(TimeSpan.FromMinutes(Convert.ToInt32(this.configuration["SearchIndexingIntervalInMinutes"]))),
             };
             await searchClient.Indexers.CreateAsync(indexerConfig);
-        }
-
-        /// <summary>
-        /// this method is called to ensure InitializeAsync method is called before any storage operation.
-        /// </summary>
-        /// <returns>Task.</returns>
-        private async Task EnsureInitializedAsync()
-        {
-            await this.initializeTask.Value;
         }
     }
 }

@@ -25,12 +25,13 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.AzureFunction
         /// <param name="builder">webjobs builder.</param>
         public void Configure(IWebJobsBuilder builder)
         {
-            builder.Services.AddSingleton<ITeamKbMappingStorageProvider, TeamKbMappingStorageProvider>();
+            builder.Services.AddSingleton<IConfigurationStorageProvider, ConfigurationStorageProvider>();
             IQnAMakerClient qnaMakerClient = new QnAMakerClient(new ApiKeyServiceClientCredentials(Environment.GetEnvironmentVariable("QnAMakerSubscriptionKey"))) { Endpoint = Environment.GetEnvironmentVariable("QnAMakerApiUrl") };
             builder.Services.AddSingleton<IQnaServiceProvider>((provider) => new QnaServiceProvider(
-                provider.GetRequiredService<ITeamKbMappingStorageProvider>(),
+                provider.GetRequiredService<IConfigurationStorageProvider>(),
                 qnaMakerClient));
             builder.Services.AddSingleton<ISearchServiceDataProvider, SearchServiceDataProvider>();
+            builder.Services.AddSingleton<ISearchService, SearchService>();
         }
     }
 }

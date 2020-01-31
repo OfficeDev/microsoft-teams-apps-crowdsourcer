@@ -25,14 +25,6 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         Task AddQnaAsync(string question, string answer, string createdBy, string teamId, string conversationId);
 
         /// <summary>
-        /// this method is used to create a teamId-KbId mapping entry in storage.
-        /// </summary>
-        /// <param name="teamId">team id.</param>
-        /// <param name="knowledgeBaseId">kb id.</param>
-        /// <returns>boolean result.</returns>
-        Task<bool> CreateKbMappingAsync(string teamId, string knowledgeBaseId);
-
-        /// <summary>
         /// this method is used to create knowledgebase.
         /// </summary>
         /// <returns>kb id.</returns>
@@ -87,5 +79,12 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         /// <param name="kbId">knowledgebase Id.</param>
         /// <returns>json string.</returns>
         Task<IEnumerable<QnADTO>> DownloadKnowledgebaseAsync(string kbId);
+
+        /// <summary>
+        /// This method is used to delete a knowledgebase.
+        /// </summary>
+        /// <param name="kbId">knowledgebase Id.</param>
+        /// <returns>task.</returns>
+        Task DeleteKnowledgebaseAsync(string kbId);
     }
 }

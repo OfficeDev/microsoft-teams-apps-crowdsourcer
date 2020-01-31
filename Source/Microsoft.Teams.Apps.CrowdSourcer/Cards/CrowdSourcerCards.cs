@@ -48,9 +48,9 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Cards
             foreach (var qnaDoc in qnaDocuments)
             {
                 DateTime createdAt = (qnaDoc.Metadata.Count > 1) ? new DateTime(long.Parse(qnaDoc.Metadata.Where(s => s.Name == Constants.MetadataCreatedAt).First().Value)) : default;
-                string dateString = default;
-                string createdBy = default;
-                string conversationId = default;
+                string dateString = string.Empty;
+                string createdBy = string.Empty;
+                string conversationId = string.Empty;
 
                 if (qnaDoc.Metadata?.Count > 1)
                 {
