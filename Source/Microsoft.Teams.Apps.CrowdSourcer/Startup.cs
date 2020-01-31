@@ -49,14 +49,14 @@ namespace Microsoft.Teams.Apps.CrowdSourcer
             services.AddSingleton<ICredentialProvider, ConfigurationCredentialProvider>();
             services.AddSingleton<IBotFrameworkHttpAdapter, BotFrameworkHttpAdapter>();
             services.AddSingleton(new MicrosoftAppCredentials(this.Configuration["MicrosoftAppId"], this.Configuration["MicrosoftAppPassword"]));
-            services.AddSingleton<ITeamKbMappingStorageProvider>(new TeamKbMappingStorageProvider(this.Configuration));
+            services.AddSingleton<IConfigurationStorageProvider>(new ConfigurationStorageProvider(this.Configuration));
             services.AddSingleton<IObjectIdToNameMapper>(new ObjectIdToNameMapper(this.Configuration));
 
             IQnAMakerClient qnaMakerClient = new QnAMakerClient(new ApiKeyServiceClientCredentials(this.Configuration["QnAMakerSubscriptionKey"])) { Endpoint = this.Configuration["QnAMakerApiUrl"] };
             string endpointKey = Task.Run(() => qnaMakerClient.EndpointKeys.GetKeysAsync()).Result.PrimaryEndpointKey;
 
             services.AddSingleton<IQnaServiceProvider>((provider) => new QnaServiceProvider(
-                provider.GetRequiredService<ITeamKbMappingStorageProvider>(),
+                provider.GetRequiredService<IConfigurationStorageProvider>(),
                 this.Configuration,
                 qnaMakerClient,
                 new QnAMakerRuntimeClient(new EndpointKeyServiceClientCredentials(endpointKey)) { RuntimeEndpoint = this.Configuration["QnAMakerHostUrl"] }));
@@ -68,7 +68,7 @@ namespace Microsoft.Teams.Apps.CrowdSourcer
                 provider.GetRequiredService<TelemetryClient>(),
                 provider.GetRequiredService<IQnaServiceProvider>(),
                 this.Configuration,
-                provider.GetRequiredService<ITeamKbMappingStorageProvider>(),
+                provider.GetRequiredService<IConfigurationStorageProvider>(),
                 provider.GetRequiredService<IObjectIdToNameMapper>(),
                 provider.GetRequiredService<ISearchService>(),
                 provider.GetRequiredService<CrowdSourcerCards>()));

@@ -21,5 +21,11 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Common.Providers
         /// <param name="teamId">team Id.</param>
         /// <returns>search result list.</returns>
         Task<IList<AzureSearchEntity>> GetAzureSearchEntitiesAsync(string searchQuery, string commandId, string teamId);
+
+        /// <summary>
+        /// Creates Index, Data Source and Indexer for search service.
+        /// </summary>
+        /// <returns>task.</returns>
+        Task InitializeSearchServiceDependency();
     }
 }

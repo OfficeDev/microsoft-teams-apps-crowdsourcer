@@ -37,7 +37,7 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Bots
         private readonly TelemetryClient telemetryClient;
         private readonly IQnaServiceProvider qnaServiceProvider;
         private readonly IConfiguration configuration;
-        private readonly ITeamKbMappingStorageProvider teamMappingStorageProvider;
+        private readonly IConfigurationStorageProvider configurationStorageProvider;
         private readonly IObjectIdToNameMapper nameMappingStorageProvider;
         private readonly ISearchService searchService;
         private readonly CrowdSourcerCards cards;
@@ -47,19 +47,17 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Bots
         /// </summary>
         /// <param name="telemetryClient">telemetry client.</param>
         /// <param name="qnaServiceProvider">qnA maker service provider.</param>
-        /// <param name="microsoftAppCredentials">app credentials.</param>
         /// <param name="configuration">configuration settings.</param>
-        /// <param name="messagingExtensionQueryHandler">messaging extension.</param>
-        /// <param name="teamMappingStorageProvider">team kb mapping storage provider.</param>
+        /// <param name="configurationStorageProvider">Knowledge base configuration storage provider.</param>
         /// <param name="nameMappingStorageProvider">name mapping storage provider.</param>
         /// <param name="searchService">serach service.</param>
         /// <param name="cards">all cards.</param>
-        public CrowdSourcerBot(TelemetryClient telemetryClient, IQnaServiceProvider qnaServiceProvider, IConfiguration configuration, ITeamKbMappingStorageProvider teamMappingStorageProvider, IObjectIdToNameMapper nameMappingStorageProvider, ISearchService searchService, CrowdSourcerCards cards)
+        public CrowdSourcerBot(TelemetryClient telemetryClient, IQnaServiceProvider qnaServiceProvider, IConfiguration configuration, IConfigurationStorageProvider configurationStorageProvider, IObjectIdToNameMapper nameMappingStorageProvider, ISearchService searchService, CrowdSourcerCards cards)
         {
             this.telemetryClient = telemetryClient;
             this.qnaServiceProvider = qnaServiceProvider;
             this.configuration = configuration;
-            this.teamMappingStorageProvider = teamMappingStorageProvider;
+            this.configurationStorageProvider = configurationStorageProvider;
             this.nameMappingStorageProvider = nameMappingStorageProvider;
             this.searchService = searchService;
             this.cards = cards;
@@ -142,56 +140,23 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Bots
             {
                 var activity = turnContext.Activity;
                 this.telemetryClient.TrackTrace($"conversationType: {activity.Conversation.ConversationType}, membersAdded: {activity.MembersAdded?.Count}, membersRemoved: {activity.MembersRemoved?.Count()}");
-                bool isKbMappingCreated = default;
+
                 if (activity.Conversation.ConversationType.Equals("channel"))
                 {
                     if (membersAdded.Any(m => m.Id == activity.Recipient.Id))
                     {
                         // Bot was added to a team
                         this.telemetryClient.TrackTrace($"Bot added to team {activity.Conversation.Id}");
-
-                        var teamDetails = ((JObject)turnContext.Activity.ChannelData).ToObject<TeamsChannelData>();
-
-                        // check if kb mapping exists for any team.
-                        var kbMappings = await this.teamMappingStorageProvider.GetAllKbMappingsAsync();
-                        if (kbMappings == null || kbMappings.Count == 0)
+                        KbConfiguration kbConfiguration = await this.configurationStorageProvider.GetKbConfigAsync();
+                        if (kbConfiguration == null)
                         {
-                            // only create kb if not exists for any team.
-                            string kbId = await this.qnaServiceProvider.CreateKnowledgeBaseAsync();
-                            if (!string.IsNullOrEmpty(kbId))
-                            {
-                                this.telemetryClient.TrackTrace($"kb created : {kbId}");
-                                isKbMappingCreated = await this.qnaServiceProvider.CreateKbMappingAsync(teamDetails.Team.Id, kbId);
-                                if (!isKbMappingCreated)
-                                {
-                                    this.telemetryClient.TrackTrace($"kb mapping not created team id: {teamDetails.Team.Id} kbid: {kbId}");
-                                    await turnContext.SendActivityAsync(MessageFactory.Text(Strings.ErrorMsgText));
-                                }
-                                else
-                                {
-                                    this.telemetryClient.TrackTrace($"kb mapping created team id: {teamDetails.Team.Id} kbid: {kbId}");
-                                    await this.qnaServiceProvider.PublishKnowledgebaseAsync(kbId);
-                                }
-                            }
+                            this.telemetryClient.TrackTrace($"Kb has not been created");
+                            await turnContext.SendActivityAsync(MessageFactory.Text(Strings.ErrorMsgText));
                         }
                         else
                         {
-                            // if kb mapping not exists => create mapping
-                            if (!kbMappings.Any(m => m.RowKey.Contains(teamDetails.Team.Id) && !string.IsNullOrEmpty(m.KbId)))
-                            {
-                                isKbMappingCreated = await this.qnaServiceProvider.CreateKbMappingAsync(teamDetails.Team.Id, kbMappings.First().KbId);
-                                if (!isKbMappingCreated)
-                                {
-                                    await turnContext.SendActivityAsync(MessageFactory.Text(Strings.ErrorMsgText));
-                                }
-                                else
-                                {
-                                    this.telemetryClient.TrackTrace($"kb mapping created team id: {teamDetails.Team.Id} kbid: {kbMappings.First().KbId}");
-                                }
-                            }
+                            await turnContext.SendActivityAsync(MessageFactory.Attachment(this.cards.WelcomeCard()));
                         }
-
-                        await turnContext.SendActivityAsync(MessageFactory.Attachment(this.cards.WelcomeCard()));
                     }
                 }
             }
@@ -317,7 +282,7 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Bots
                 // This helps to differentiate the qna maker generated from task module there by not providing any 'Go to original thread' button.
                 await this.qnaServiceProvider.AddQnaAsync(questionText, answerText, turnContext.Activity.From.AadObjectId, teamsChannelData.Team.Id, "#").ConfigureAwait(false);
 
-                this.telemetryClient.TrackTrace($"Question added by: {turnContext.Activity.From.AadObjectId}");
+                this.telemetryClient.TrackEvent("Question added", new Dictionary<string, string>() { { "User", turnContext.Activity.From.AadObjectId }, { "Team", teamsChannelData.Team.Id } });
                 await this.SaveNameAsync(turnContext.Activity.From.Name, turnContext.Activity.From.AadObjectId);
 
                 // send card.
@@ -433,12 +398,12 @@ namespace Microsoft.Teams.Apps.CrowdSourcer.Bots
         {
             string text = turnContext.Activity.RemoveRecipientMention();
 
-            QnASearchResultList qnaSearchResult = default;
-            QnASearchResult searchResult = default;
-            AdaptiveSubmitActionData activityValue = default;
-            Attachment attachment = default;
-            string answer = default;
-            string updatedQuestion = default;
+            QnASearchResultList qnaSearchResult;
+            QnASearchResult searchResult;
+            AdaptiveSubmitActionData activityValue;
+            Attachment attachment;
+            string answer;
+            string updatedQuestion;
 
             turnContext.Activity.TryGetChannelData<TeamsChannelData>(out var teamsChannelData);
             var activity = (Activity)turnContext.Activity;

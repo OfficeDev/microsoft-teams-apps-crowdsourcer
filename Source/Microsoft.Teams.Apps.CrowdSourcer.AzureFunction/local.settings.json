@@ -5,6 +5,8 @@
     "AzureWebJobsDashboard": "",
     "QnAMakerSubscriptionKey": "",
     "QnAMakerApiUrl": "",
-    "StorageConnectionString": ""
+    "StorageConnectionString": "",
+    "SearchServiceName": "",
+    "SearchServiceKey": ""
   }
 }

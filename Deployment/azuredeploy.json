@@ -1,547 +1,569 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "baseResourceName": {
-      "minLength": 1,
-      "type": "string",
-      "metadata": {
-        "description": "The base name to use for the resources that will be provisioned."
-      }
-    },
-    "botClientId": {
-      "minLength": 36,
-      "maxLength": 36,
-      "type": "string",
-      "metadata": {
-        "description": "The client ID of the bot Azure AD app, e.g., 123e4567-e89b-12d3-a456-426655440000."
-      }
-    },
-    "botClientSecret": {
-      "minLength": 1,
-      "type": "SecureString",
-      "metadata": {
-        "description": "The client secret of the bot Azure AD app."
-      }
-    },
-    "appDisplayName": {
-      "defaultValue": "Crowdsourcer",
-      "minLength": 1,
-      "type": "string",
-      "metadata": {
-        "description": "The app (and bot) display name."
-      }
-    },
-    "appDescription": {
-      "defaultValue": "QnA bot that works on the concept of crowdsourcing information in teams.",
-      "minLength": 1,
-      "type": "string",
-      "metadata": {
-        "description": "The app (and bot) description."
-      }
-    },
-    "appIconUrl": {
-      "defaultValue": "https://raw.githubusercontent.com/OfficeDev/microsoft-teams-crowdsourcer-app/master/Manifest/color.png",
-      "minLength": 1,
-      "type": "string",
-      "metadata": {
-        "description": "The link to the icon for the app. It must resolve to a PNG file."
-      }
-    },
-    "tenantId": {
-      "defaultValue": "[subscription().tenantId]",
-      "minLength": 1,
-      "maxLength": 36,
-      "type": "string",
-      "metadata": {
-        "description": "The ID of the tenant to which the app will be deployed."
-      }
-    },
-    "sku": {
-      "defaultValue": "Standard",
-      "allowedValues": [
-        "Basic",
-        "Standard",
-        "Premium"
-      ],
-      "type": "string",
-      "metadata": {
-        "description": "The pricing tier for the hosting plan."
-      }
-    },
-    "planSize": {
-      "defaultValue": "1",
-      "allowedValues": [
-        "1",
-        "2",
-        "3"
-      ],
-      "type": "string",
-      "metadata": {
-        "description": "The size of the hosting plan (small, medium, or large)."
-      }
-    },
-    "location": {
-      "defaultValue": "[resourceGroup().location]",
-      "type": "string",
-      "metadata": {
-        "description": "Location for all resources."
-      }
-    },
-    "qnaMakerSku": {
-      "defaultValue": "S0 ($10 per month for unlimited documents, 3 transactions per second, 100 transactions per minute)",
-      "allowedValues": [
-        "F0 (3 managed documents per month, 3 transactions per second, 100 transactions per minute, 50K transactions per month)",
-        "S0 ($10 per month for unlimited documents, 3 transactions per second, 100 transactions per minute)"
-      ],
-      "type": "string",
-      "metadata": {
-        "description": "The pricing tier for the QnAMaker service."
-      }
-    },
-    "searchServiceSku": {
-      "defaultValue": "B (15 indexes)",
-      "allowedValues": [
-        "F (3 indexes)",
-        "B (15 indexes)"
-      ],
-      "type": "string",
-      "metadata": {
-        "description": "The pricing tier for the Azure Search service."
-      }
-    },
-    "gitRepoUrl": {
-      "defaultValue": "https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app.git",
-      "type": "string",
-      "metadata": {
-        "description": "The URL to the GitHub repository to deploy."
-      }
-    },
-    "gitBranch": {
-      "defaultValue": "master",
-      "type": "string",
-      "metadata": {
-        "description": "The branch of the GitHub repository to deploy."
-      }
-    }
-  },
-  "variables": {
-    "uniqueString": "[uniquestring(subscription().subscriptionId, resourceGroup().id, parameters('baseResourceName'))]",
-    "botName": "[parameters('baseResourceName')]",
-    "botAppDomain": "[concat(variables('botName'), '.azurewebsites.net')]",
-    "botAppUrl": "[concat('https://', variables('botAppDomain'))]",
-    "hostingPlanName": "[parameters('baseResourceName')]",
-    "storageAccountName": "[variables('uniqueString')]",
-    "botAppInsightsName": "[parameters('baseResourceName')]",
-    "functionAppName": "[concat(parameters('baseResourceName'), '-function')]",
-    "qnaMakerAccountName": "[concat(parameters('baseResourceName'),'-', variables('uniqueString'))]",
-    "qnaMakerAppServiceName": "[concat('qnamaker-', parameters('baseResourceName'), '-', variables('uniqueString'))]",
-    "qnaMakerAppInsightsName": "[concat('qnamaker-', parameters('baseResourceName'), '-', variables('uniqueString'))]",
-    "qnaMakerSkuValue": "[substring(parameters('qnaMakerSku'), 0, 2)]",
-    "azureSearchName": "[concat('search-', parameters('baseResourceName'), '-', variables('uniqueString'))]",
-    "azureSearchSkus": {
-      "F ": "free",
-      "B ": "basic"
-    },
-    "azureSearchSkuValue": "[variables('azureSearchSkus')[toUpper(substring(parameters('searchServiceSku'), 0, 2))]]",
-    "sharedSkus": [
-      "Free",
-      "Shared"
-    ],
-    "isSharedPlan": "[contains(variables('sharedSkus'), parameters('sku'))]",
-    "skuFamily": "[if(equals(parameters('sku'), 'Shared'), 'D', take(parameters('sku'), 1))]"
-  },
-  "resources": [
-    {
-      "type": "Microsoft.Storage/storageAccounts",
-      "apiVersion": "2018-02-01",
-      "name": "[variables('storageAccountName')]",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "Standard_LRS"
-      },
-      "kind": "Storage"
-    },
-    {
-      "type": "Microsoft.Web/serverfarms",
-      "apiVersion": "2016-09-01",
-      "name": "[variables('hostingPlanName')]",
-      "location": "[parameters('location')]",
-      "sku": {
-        "name": "[if(variables('isSharedPlan'), concat(variables('skuFamily'),'1'), concat(variables('skuFamily'),parameters('planSize')))]",
-        "tier": "[parameters('sku')]",
-        "size": "[concat(variables('skuFamily'), parameters('planSize'))]",
-        "family": "[variables('skuFamily')]",
-        "capacity": 0
-      },
-      "properties": {
-        "name": "[variables('hostingPlanName')]",
-        "hostingEnvironment": "",
-        "numberOfWorkers": 1
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites",
-      "apiVersion": "2016-08-01",
-      "name": "[variables('botName')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName'))]",
-        "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
-        "[resourceId('Microsoft.Insights/components/', variables('botAppInsightsName'))]"
-      ],
-      "kind": "app",
-      "properties": {
-        "name": "[variables('botName')]",
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "enabled": true,
-        "reserved": false,
-        "clientAffinityEnabled": true,
-        "clientCertEnabled": false,
-        "hostNamesDisabled": false,
-        "containerSize": 0,
-        "dailyMemoryTimeQuota": 0,
-        "httpsOnly": true,
-        "siteConfig": {
-          "alwaysOn": true,
-          "appSettings": [
-            {
-              "name": "SITE_ROLE",
-              "value": "bot"
-            },
-            {
-              "name": "MicrosoftAppId",
-              "value": "[parameters('botClientId')]"
-            },
-            {
-              "name": "MicrosoftAppPassword",
-              "value": "[parameters('botClientSecret')]"
-            },
-            {
-              "name": "StorageConnectionString",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
-            },
-            {
-              "name": "TenantId",
-              "value": "[parameters('tenantId')]"
-            },
-            {
-              "name": "AppBaseUri",
-              "value": "[concat('https://', variables('botAppDomain'))]"
-            },
-            {
-              "name": "QnAMakerApiUrl",
-              "value": "https://westus.api.cognitive.microsoft.com"
-            },
-            {
-              "name": "QnAMakerSubscriptionKey",
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName')), '2017-04-18').key1]"
-            },
-            {
-              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
-              "value": "[reference(resourceId('Microsoft.Insights/components/', variables('botAppInsightsName')), '2015-05-01').InstrumentationKey]"
-            },
-            {
-              "name": "ScoreThreshold",
-              "value": "50"
-            },
-            {
-              "name": "SearchServiceName",
-              "value": "[variables('azureSearchName')]"
-            },
-            {
-              "name": "SearchServiceKey",
-              "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').primaryKey]"
-            },
-            {
-              "name": "SearchServiceQueryApiKey",
-              "value": "[listQueryKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').value[0].key]"
-            },
-            {
-              "name": "AccessCacheExpiryInDays",
-              "value": "5"
-            },
-            {
-              "name": "SearchIndexingIntervalInMinutes",
-              "value": "15"
-            },
-            {
-              "name": "QnAMakerHostUrl",
-              "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "baseResourceName": {
+            "minLength": 1,
+            "type": "string",
+            "metadata": {
+                "description": "The base name to use for the resources that will be provisioned."
             }
-          ]
+        },
+        "botClientId": {
+            "minLength": 36,
+            "maxLength": 36,
+            "type": "string",
+            "metadata": {
+                "description": "The client ID of the bot Azure AD app, e.g., 123e4567-e89b-12d3-a456-426655440000."
+            }
+        },
+        "botClientSecret": {
+            "minLength": 1,
+            "type": "SecureString",
+            "metadata": {
+                "description": "The client secret of the bot Azure AD app."
+            }
+        },
+        "appDisplayName": {
+            "defaultValue": "Crowdsourcer",
+            "minLength": 1,
+            "type": "string",
+            "metadata": {
+                "description": "The app (and bot) display name."
+            }
+        },
+        "appDescription": {
+            "defaultValue": "QnA bot that works on the concept of crowdsourcing information in teams.",
+            "minLength": 1,
+            "type": "string",
+            "metadata": {
+                "description": "The app (and bot) description."
+            }
+        },
+      "appIconUrl": {
+        "defaultValue": "https://raw.githubusercontent.com/OfficeDev/microsoft-teams-crowdsourcer-app/master/Manifest/color.png",
+        "minLength": 1,
+        "type": "string",
+        "metadata": {
+          "description": "The link to the icon for the app. It must resolve to a PNG file."
         }
       },
-      "resources": [
-        {
-          "type": "sourcecontrols",
-          "apiVersion": "2016-08-01",
-          "name": "web",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('botName'))]"
-          ],
-          "properties": {
-            "RepoUrl": "[parameters('gitRepoUrl')]",
-            "branch": "[parameters('gitBranch')]",
-            "IsManualIntegration": true
-          },
-          "condition": "[not(empty(parameters('gitRepoUrl')))]"
+        "tenantId": {
+            "defaultValue": "[subscription().tenantId]",
+            "minLength": 1,
+            "maxLength": 36,
+            "type": "string",
+            "metadata": {
+                "description": "The ID of the tenant to which the app will be deployed."
+            }
+        },
+        "sku": {
+            "defaultValue": "Standard",
+            "allowedValues": [
+                "Standard",
+                "Premium"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The pricing tier for the hosting plan."
+            }
+        },
+        "planSize": {
+            "defaultValue": "1",
+            "allowedValues": [
+                "1",
+                "2",
+                "3"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The size of the hosting plan (small, medium, or large)."
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "string",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+        },
+        "qnaMakerSku": {
+            "defaultValue": "S0 ($10 per month for unlimited documents, 3 transactions per second, 100 transactions per minute)",
+            "allowedValues": [
+                "F0 (3 managed documents per month, 3 transactions per second, 100 transactions per minute, 50K transactions per month)",
+                "S0 ($10 per month for unlimited documents, 3 transactions per second, 100 transactions per minute)"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The pricing tier for the QnAMaker service."
+            }
+        },
+        "searchServiceSku": {
+            "defaultValue": "B (15 indexes)",
+            "allowedValues": [
+                "F (3 indexes)",
+                "B (15 indexes)"
+            ],
+            "type": "string",
+            "metadata": {
+                "description": "The pricing tier for the Azure Search service."
+            }
+        },
+      "gitRepoUrl": {
+        "defaultValue": "https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app.git",
+        "type": "string",
+        "metadata": {
+          "description": "The URL to the GitHub repository to deploy."
         }
-      ]
+      },
+        "gitBranch": {
+            "defaultValue": "master",
+            "type": "string",
+            "metadata": {
+                "description": "The branch of the GitHub repository to deploy."
+            }
+        }
     },
-    {
-      "type": "Microsoft.Insights/components",
-      "apiVersion": "2015-05-01",
-      "name": "[variables('botAppInsightsName')]",
-      "location": "[parameters('location')]",
-      "tags": {
-        "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('botName'))]": "Resource"
-      },
-      "properties": {
-        "Application_Type": "web",
-        "Request_Source": "rest"
-      }
+    "variables": {
+        "uniqueString": "[uniquestring(subscription().subscriptionId, resourceGroup().id, parameters('baseResourceName'))]",
+        "botName": "[parameters('baseResourceName')]",
+        "botAppDomain": "[concat(variables('botName'), '.azurewebsites.net')]",
+        "botAppUrl": "[concat('https://', variables('botAppDomain'))]",
+        "hostingPlanName": "[parameters('baseResourceName')]",
+        "hostingPlanNameQnAMaker": "[concat('qnamaker-',parameters('baseResourceName'))]",
+        "storageAccountName": "[variables('uniqueString')]",
+        "botAppInsightsName": "[parameters('baseResourceName')]",
+        "functionAppName": "[concat(parameters('baseResourceName'), '-function')]",
+        "qnaMakerAccountName": "[concat(parameters('baseResourceName'),'-', variables('uniqueString'))]",
+        "qnaMakerAppServiceName": "[concat('qnamaker-', variables('uniqueString'))]",
+        "qnaMakerAppInsightsName": "[concat('qnamaker-', variables('uniqueString'))]",
+        "qnaMakerSkuValue": "[substring(parameters('qnaMakerSku'), 0, 2)]",
+        "azureSearchName": "[concat('search-', variables('uniqueString'))]",
+        "azureSearchSkus": {
+            "F ": "free",
+            "B ": "basic"
+        },
+        "azureSearchSkuValue": "[variables('azureSearchSkus')[toUpper(substring(parameters('searchServiceSku'), 0, 2))]]",
+        "skuFamily": "[take(parameters('sku'), 1)]"
     },
-    {
-      "type": "Microsoft.BotService/botServices",
-      "apiVersion": "2018-07-12",
-      "name": "[variables('botName')]",
-      "location": "global",
-      "sku": {
-        "name": "F0"
-      },
-      "kind": "sdk",
-      "properties": {
-        "displayName": "[parameters('appDisplayName')]",
-        "description": "[parameters('appDescription')]",
-        "iconUrl": "[parameters('appIconUrl')]",
-        "msaAppId": "[parameters('botClientId')]",
-        "endpoint": "[concat(variables('botAppUrl'), '/api/messages')]"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/sites', variables('botName'))]",
-        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
-      ],
-      "resources": [
+    "resources": [
         {
-          "type": "Microsoft.BotService/botServices/channels",
-          "apiVersion": "2018-07-12",
-          "name": "[concat(variables('botName'), '/MsTeamsChannel')]",
-          "location": "global",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('botName'))]",
-            "[concat('Microsoft.BotService/botServices/', variables('botName'))]"
-          ],
-          "sku": {
-            "name": "F0"
-          },
-          "properties": {
-            "channelName": "MsTeamsChannel",
-            "location": "global",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-02-01",
+            "name": "[variables('storageAccountName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "Storage"
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2016-09-01",
+            "name": "[variables('hostingPlanName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[concat(variables('skuFamily'),parameters('planSize'))]",
+                "tier": "[parameters('sku')]",
+                "size": "[concat(variables('skuFamily'), parameters('planSize'))]",
+                "family": "[variables('skuFamily')]",
+                "capacity": 0
+            },
             "properties": {
-              "isEnabled": true
+                "name": "[variables('hostingPlanName')]",
+                "hostingEnvironment": "",
+                "numberOfWorkers": 1
             }
-          }
-        }
-      ]
-    },
-    {
-      "type": "Microsoft.Search/searchServices",
-      "apiVersion": "2015-08-19",
-      "name": "[variables('azureSearchName')]",
-      "location": "[parameters('location')]",
-      "tags": {
-        "isqnamaker": "true"
-      },
-      "sku": {
-        "name": "[toLower(variables('azureSearchSkuValue'))]"
-      },
-      "properties": {
-        "replicaCount": 1,
-        "partitionCount": 1,
-        "hostingMode": "default"
-      }
-    },
-    {
-      "type": "Microsoft.Web/sites",
-      "apiVersion": "2016-08-01",
-      "name": "[variables('functionAppName')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
-      ],
-      "kind": "functionapp",
-      "properties": {
-        "name": "[variables('functionAppName')]",
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-        "hostingEnvironment": "",
-        "clientAffinityEnabled": false,
-        "siteConfig": {
-          "alwaysOn": "[not(variables('isSharedPlan'))]",
-          "appSettings": [
-            {
-              "name": "PROJECT",
-              "value": "Source/Microsoft.Teams.Apps.CrowdSourcer.AzureFunction/Microsoft.Teams.Apps.CrowdSourcer.AzureFunction.csproj"
-            },
-            {
-              "name": "SITE_ROLE",
-              "value": "function"
-            },
-            {
-              "name": "AzureWebJobsStorage",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]"
-            },
-            {
-              "name": "AzureWebJobsDashboard",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]"
-            },
-            {
-              "name": "FUNCTIONS_EXTENSION_VERSION",
-              "value": "~2"
-            },
-            {
-              "name": "FUNCTIONS_WORKER_RUNTIME",
-              "value": "dotnet"
-            },
-            {
-              "name": "QnAMakerApiUrl",
-              "value": "https://westus.api.cognitive.microsoft.com"
-            },
-            {
-              "name": "QnAMakerSubscriptionKey",
-              "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName')), '2017-04-18').key1]"
-            },
-            {
-              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
-            },
-            {
-              "name": "WEBSITE_CONTENTSHARE",
-              "value": "[toLower(variables('functionAppName'))]"
-            },
-            {
-              "name": "StorageConnectionString",
-              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
-            },
-            {
-              "name": "WEBSITE_NODE_DEFAULT_VERSION",
-              "value": "10.14.1"
-            }
-          ]
-        }
-      },
-      "resources": [
+        },
         {
-          "type": "sourcecontrols",
-          "apiVersion": "2015-08-01",
-          "name": "web",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
-          ],
-          "properties": {
-            "RepoUrl": "[parameters('gitRepoUrl')]",
-            "branch": "[parameters('gitBranch')]",
-            "IsManualIntegration": true
-          },
-          "condition": "[not(empty(parameters('gitRepoUrl')))]"
-        }
-      ]
-    },
-    {
-      "type": "Microsoft.Web/sites",
-      "apiVersion": "2016-08-01",
-      "name": "[variables('qnaMakerAppServiceName')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[concat('Microsoft.Web/serverfarms/', variables('hostingPlanName'))]"
-      ],
-      "tags": {
-        "isqnamaker": "true",
-        "[concat('hidden-related:', '/subscriptions/', subscription().subscriptionId,'/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Web/serverfarms/', variables('hostingPlanName'))]": "empty"
-      },
-      "properties": {
-        "enabled": true,
-        "siteConfig": {
-          "cors": {
-            "allowedOrigins": [
-              "*"
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2016-09-01",
+            "name": "[variables('hostingPlanNameQnAMaker')]",
+            "location": "[parameters('location')]",
+            "sku": {
+                "name": "[concat(variables('skuFamily'),parameters('planSize'))]",
+                "tier": "[parameters('sku')]",
+                "size": "[concat(variables('skuFamily'), parameters('planSize'))]",
+                "family": "[variables('skuFamily')]",
+                "capacity": 0
+            },
+            "properties": {
+                "name": "[variables('hostingPlanNameQnAMaker')]",
+                "hostingEnvironment": "",
+                "numberOfWorkers": 1
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2016-08-01",
+            "name": "[variables('botName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName'))]",
+                "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
+                "[resourceId('Microsoft.Insights/components/', variables('botAppInsightsName'))]"
+            ],
+            "kind": "app",
+            "properties": {
+                "name": "[variables('botName')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "enabled": true,
+                "reserved": false,
+                "clientAffinityEnabled": true,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true,
+                "siteConfig": {
+                    "alwaysOn": true,
+                    "appSettings": [
+                        {
+                            "name": "SITE_ROLE",
+                            "value": "bot"
+                        },
+                        {
+                            "name": "MicrosoftAppId",
+                            "value": "[parameters('botClientId')]"
+                        },
+                        {
+                            "name": "MicrosoftAppPassword",
+                            "value": "[parameters('botClientSecret')]"
+                        },
+                        {
+                            "name": "StorageConnectionString",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "TenantId",
+                            "value": "[parameters('tenantId')]"
+                        },
+                        {
+                            "name": "AppBaseUri",
+                            "value": "[concat('https://', variables('botAppDomain'))]"
+                        },
+                        {
+                            "name": "QnAMakerApiUrl",
+                            "value": "https://westus.api.cognitive.microsoft.com"
+                        },
+                        {
+                            "name": "QnAMakerSubscriptionKey",
+                            "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName')), '2017-04-18').key1]"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('Microsoft.Insights/components/', variables('botAppInsightsName')), '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "ScoreThreshold",
+                            "value": "50"
+                        },
+                        {
+                            "name": "SearchServiceName",
+                            "value": "[variables('azureSearchName')]"
+                        },
+                        {
+                            "name": "SearchServiceKey",
+                            "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').primaryKey]"
+                        },
+                        {
+                            "name": "SearchServiceQueryApiKey",
+                            "value": "[listQueryKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').value[0].key]"
+                        },
+                        {
+                            "name": "AccessCacheExpiryInDays",
+                            "value": "5"
+                        },
+                        {
+                            "name": "SearchIndexingIntervalInMinutes",
+                            "value": "15"
+                        },
+                        {
+                            "name": "QnAMakerHostUrl",
+                            "value": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
+                        }
+                    ]
+                }
+            },
+            "resources": [
+                {
+                    "type": "sourcecontrols",
+                    "apiVersion": "2016-08-01",
+                    "name": "web",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', variables('botName'))]"
+                    ],
+                    "properties": {
+                        "RepoUrl": "[parameters('gitRepoUrl')]",
+                        "branch": "[parameters('gitBranch')]",
+                        "IsManualIntegration": true
+                    },
+                    "condition": "[not(empty(parameters('gitRepoUrl')))]"
+                }
             ]
-          }
-        },
-        "name": "[variables('qnaMakerAppServiceName')]",
-        "serverFarmId": "[concat('/subscriptions/', subscription().subscriptionId,'/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Web/serverfarms/', variables('hostingPlanName'))]",
-        "hostingEnvironment": ""
-      },
-      "resources": [
-        {
-          "type": "microsoft.insights/components",
-          "apiVersion": "2015-05-01",
-          "name": "[variables('qnaMakerAppInsightsName')]",
-          "location": "[parameters('location')]",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/sites/', variables('qnaMakerAppServiceName'))]"
-          ],
-          "tags": {
-            "[concat('hidden-link:', resourceId('Microsoft.Web/sites/', variables('qnaMakerAppServiceName')))]": "Resource"
-          },
-          "kind": "web",
-          "properties": {
-            "ApplicationId": "[variables('qnaMakerAppServiceName')]"
-          }
         },
         {
-          "type": "config",
-          "apiVersion": "2015-08-01",
-          "name": "appsettings",
-          "dependsOn": [
-            "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
-            "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]"
-          ],
-          "properties": {
-            "AzureSearchName": "[variables('azureSearchName')]",
-            "AzureSearchAdminKey": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').primaryKey]",
-            "UserAppInsightsKey": "[reference(resourceId('Microsoft.Insights/components/', variables('qnaMakerAppInsightsName')), '2015-05-01').InstrumentationKey]",
-            "UserAppInsightsName": "[variables('qnaMakerAppInsightsName')]",
-            "UserAppInsightsAppId": "[reference(resourceId('Microsoft.Insights/components/', variables('qnaMakerAppInsightsName')), '2015-05-01').AppId]",
-            "PrimaryEndpointKey": "[concat(variables('qnaMakerAppServiceName'), '-PrimaryEndpointKey')]",
-            "SecondaryEndpointKey": "[concat(variables('qnaMakerAppServiceName'), '-SecondaryEndpointKey')]",
-            "QNAMAKER_EXTENSION_VERSION": "latest"
-          }
+            "type": "Microsoft.Insights/components",
+            "apiVersion": "2015-05-01",
+            "name": "[variables('botAppInsightsName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('botName'))]": "Resource"
+            },
+            "properties": {
+                "Application_Type": "web",
+                "Request_Source": "rest"
+            }
+        },
+        {
+            "type": "Microsoft.BotService/botServices",
+            "apiVersion": "2018-07-12",
+            "name": "[variables('botName')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('botName'))]",
+                "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+            ],
+            "sku": {
+                "name": "F0"
+            },
+            "kind": "sdk",
+            "properties": {
+                "displayName": "[parameters('appDisplayName')]",
+                "description": "[parameters('appDescription')]",
+                "iconUrl": "[parameters('appIconUrl')]",
+                "msaAppId": "[parameters('botClientId')]",
+                "endpoint": "[concat(variables('botAppUrl'), '/api/messages')]"
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.BotService/botServices/channels",
+                    "apiVersion": "2018-07-12",
+                    "name": "[concat(variables('botName'), '/MsTeamsChannel')]",
+                    "location": "global",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', variables('botName'))]",
+                        "[concat('Microsoft.BotService/botServices/', variables('botName'))]"
+                    ],
+                    "sku": {
+                        "name": "F0"
+                    },
+                    "properties": {
+                        "channelName": "MsTeamsChannel",
+                        "location": "global",
+                        "properties": {
+                            "isEnabled": true
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Search/searchServices",
+            "apiVersion": "2015-08-19",
+            "name": "[variables('azureSearchName')]",
+            "location": "[parameters('location')]",
+            "tags": {
+                "isqnamaker": "true"
+            },
+            "sku": {
+                "name": "[toLower(variables('azureSearchSkuValue'))]"
+            },
+            "properties": {
+                "replicaCount": 1,
+                "partitionCount": 1,
+                "hostingMode": "default"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2016-08-01",
+            "name": "[variables('functionAppName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            ],
+            "kind": "functionapp",
+            "properties": {
+                "name": "[variables('functionAppName')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                "hostingEnvironment": "",
+                "clientAffinityEnabled": false,
+                "siteConfig": {
+                    "alwaysOn": true,
+                  "appSettings": [
+                    {
+                      "name": "PROJECT",
+                      "value": "Source/Microsoft.Teams.Apps.CrowdSourcer.AzureFunction/Microsoft.Teams.Apps.CrowdSourcer.AzureFunction.csproj"
+                    },
+                    {
+                      "name": "SITE_ROLE",
+                      "value": "function"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]"
+                    },
+                    {
+                      "name": "AzureWebJobsDashboard",
+                      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storageAccountName'),';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1,';')]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~2"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "dotnet"
+                    },
+                    {
+                      "name": "QnAMakerApiUrl",
+                      "value": "https://westus.api.cognitive.microsoft.com"
+                    },
+                    {
+                      "name": "QnAMakerSubscriptionKey",
+                      "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts/', variables('qnaMakerAccountName')), '2017-04-18').key1]"
+                    },
+                    {
+                      "name": "SearchServiceName",
+                      "value": "[variables('azureSearchName')]"
+                    },
+                    {
+                      "name": "SearchServiceKey",
+                      "value": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').primaryKey]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(variables('functionAppName'))]"
+                    },
+                    {
+                      "name": "StorageConnectionString",
+                      "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')),'2015-05-01-preview').key1)]"
+                    },
+                    {
+                      "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                      "value": "10.14.1"
+                    }
+                  ]
+                }
+            },
+            "resources": [
+                {
+                    "type": "sourcecontrols",
+                    "apiVersion": "2015-08-01",
+                    "name": "web",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+                    ],
+                    "properties": {
+                        "RepoUrl": "[parameters('gitRepoUrl')]",
+                        "branch": "[parameters('gitBranch')]",
+                        "IsManualIntegration": true
+                    },
+                    "condition": "[not(empty(parameters('gitRepoUrl')))]"
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2016-08-01",
+            "name": "[variables('qnaMakerAppServiceName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanNameQnAMaker'))]"
+            ],
+            "tags": {
+                "isqnamaker": "true",
+                "[concat('hidden-related:', '/subscriptions/', subscription().subscriptionId,'/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Web/serverfarms/', variables('hostingPlanNameQnAMaker'))]": "empty"
+            },
+            "properties": {
+                "enabled": true,
+                "siteConfig": {
+                    "cors": {
+                        "allowedOrigins": [
+                            "*"
+                        ]
+                    }
+                },
+                "name": "[variables('qnaMakerAppServiceName')]",
+                "serverFarmId": "[concat('/subscriptions/', subscription().subscriptionId,'/resourcegroups/', resourceGroup().name, '/providers/Microsoft.Web/serverfarms/', variables('hostingPlanNameQnAMaker'))]",
+                "hostingEnvironment": ""
+            },
+            "resources": [
+                {
+                    "type": "microsoft.insights/components",
+                    "apiVersion": "2015-05-01",
+                    "name": "[variables('qnaMakerAppInsightsName')]",
+                    "location": "[parameters('location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites/', variables('qnaMakerAppServiceName'))]"
+                    ],
+                    "tags": {
+                        "[concat('hidden-link:', resourceId('Microsoft.Web/sites/', variables('qnaMakerAppServiceName')))]": "Resource"
+                    },
+                    "kind": "web",
+                    "properties": {
+                        "ApplicationId": "[variables('qnaMakerAppServiceName')]"
+                    }
+                },
+                {
+                    "type": "config",
+                    "apiVersion": "2015-08-01",
+                    "name": "appsettings",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
+                        "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]"
+                    ],
+                    "properties": {
+                        "AzureSearchName": "[variables('azureSearchName')]",
+                        "AzureSearchAdminKey": "[listAdminKeys(resourceId('Microsoft.Search/searchServices/', variables('azureSearchName')), '2015-08-19').primaryKey]",
+                        "UserAppInsightsKey": "[reference(resourceId('Microsoft.Insights/components/', variables('qnaMakerAppInsightsName')), '2015-05-01').InstrumentationKey]",
+                        "UserAppInsightsName": "[variables('qnaMakerAppInsightsName')]",
+                        "UserAppInsightsAppId": "[reference(resourceId('Microsoft.Insights/components/', variables('qnaMakerAppInsightsName')), '2015-05-01').AppId]",
+                        "PrimaryEndpointKey": "[concat(variables('qnaMakerAppServiceName'), '-PrimaryEndpointKey')]",
+                        "SecondaryEndpointKey": "[concat(variables('qnaMakerAppServiceName'), '-SecondaryEndpointKey')]",
+                        "QNAMAKER_EXTENSION_VERSION": "latest"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.CognitiveServices/accounts",
+            "apiVersion": "2017-04-18",
+            "name": "[variables('qnaMakerAccountName')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
+                "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
+                "[resourceId('microsoft.insights/components/', variables('qnaMakerAppInsightsName'))]"
+            ],
+            "sku": {
+                "name": "[variables('qnaMakerSkuValue')]"
+            },
+            "kind": "QnAMaker",
+            "properties": {
+                "apiProperties": {
+                    "qnaRuntimeEndpoint": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
+                }
+            }
         }
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts",
-      "apiVersion": "2017-04-18",
-      "name": "[variables('qnaMakerAccountName')]",
-      "location": "[parameters('location')]",
-      "dependsOn": [
-        "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
-        "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
-        "[resourceId('microsoft.insights/components/', variables('qnaMakerAppInsightsName'))]"
-      ],
-      "sku": {
-        "name": "[variables('qnaMakerSkuValue')]"
-      },
-      "kind": "QnAMaker",
-      "properties": {
-        "apiProperties": {
-          "qnaRuntimeEndpoint": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
+    ],
+    "outputs": {
+        "botId": {
+            "type": "String",
+            "value": "[parameters('botClientId')]"
+        },
+        "appDomain": {
+            "type": "String",
+            "value": "[variables('botAppDomain')]"
         }
-      }
     }
-  ],
-  "outputs": {
-    "botId": {
-      "type": "string",
-      "value": "[parameters('botClientId')]"
-    },
-    "appDomain": {
-      "type": "string",
-      "value": "[variables('botAppDomain')]"
-    }
-  }
 }
