@@ -25,9 +25,9 @@ Please read the license terms applicable to this template [here](https://github.
 
 ## **Getting** **Started**
 
-Begin with the [Solution overview](/wiki/Solution-Overview) to read about what the app does and how it works.
+Begin with the [Solution overview](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/Solution-Overview) to read about what the app does and how it works.
 
-When you're ready to try out Crowdsourcer, or to use it in your own organization, follow the steps in the [Deployment guide](/wiki/Deployment-Guide).
+When you're ready to try out Crowdsourcer, or to use it in your own organization, follow the steps in the [Deployment guide](https://github.com/OfficeDev/microsoft-teams-crowdsourcer-app/wiki/Deployment-Guide).
 
 ## **Feedback**
 
