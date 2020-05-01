@@ -124,28 +124,29 @@
             }
         }
     },
-    "variables": {
-        "uniqueString": "[uniquestring(subscription().subscriptionId, resourceGroup().id, parameters('baseResourceName'))]",
-        "botName": "[parameters('baseResourceName')]",
-        "botAppDomain": "[concat(variables('botName'), '.azurewebsites.net')]",
-        "botAppUrl": "[concat('https://', variables('botAppDomain'))]",
-        "hostingPlanName": "[parameters('baseResourceName')]",
-        "hostingPlanNameQnAMaker": "[concat('qnamaker-',parameters('baseResourceName'))]",
-        "storageAccountName": "[variables('uniqueString')]",
-        "botAppInsightsName": "[parameters('baseResourceName')]",
-        "functionAppName": "[concat(parameters('baseResourceName'), '-function')]",
-        "qnaMakerAccountName": "[concat(parameters('baseResourceName'),'-', variables('uniqueString'))]",
-        "qnaMakerAppServiceName": "[concat('qnamaker-', variables('uniqueString'))]",
-        "qnaMakerAppInsightsName": "[concat('qnamaker-', variables('uniqueString'))]",
-        "qnaMakerSkuValue": "[substring(parameters('qnaMakerSku'), 0, 2)]",
-        "azureSearchName": "[concat('search-', variables('uniqueString'))]",
-        "azureSearchSkus": {
-            "F ": "free",
-            "B ": "basic"
-        },
-        "azureSearchSkuValue": "[variables('azureSearchSkus')[toUpper(substring(parameters('searchServiceSku'), 0, 2))]]",
-        "skuFamily": "[take(parameters('sku'), 1)]"
+  "variables": {
+    "uniqueString": "[uniquestring(subscription().subscriptionId, resourceGroup().id, parameters('baseResourceName'))]",
+    "botName": "[parameters('baseResourceName')]",
+    "qnaMakerLocation": "westus",
+    "botAppDomain": "[concat(variables('botName'), '.azurewebsites.net')]",
+    "botAppUrl": "[concat('https://', variables('botAppDomain'))]",
+    "hostingPlanName": "[parameters('baseResourceName')]",
+    "hostingPlanNameQnAMaker": "[concat('qnamaker-',parameters('baseResourceName'))]",
+    "storageAccountName": "[variables('uniqueString')]",
+    "botAppInsightsName": "[parameters('baseResourceName')]",
+    "functionAppName": "[concat(parameters('baseResourceName'), '-function')]",
+    "qnaMakerAccountName": "[concat(parameters('baseResourceName'),'-', variables('uniqueString'))]",
+    "qnaMakerAppServiceName": "[concat('qnamaker-', variables('uniqueString'))]",
+    "qnaMakerAppInsightsName": "[concat('qnamaker-', variables('uniqueString'))]",
+    "qnaMakerSkuValue": "[substring(parameters('qnaMakerSku'), 0, 2)]",
+    "azureSearchName": "[concat('search-', variables('uniqueString'))]",
+    "azureSearchSkus": {
+      "F ": "free",
+      "B ": "basic"
     },
+    "azureSearchSkuValue": "[variables('azureSearchSkus')[toUpper(substring(parameters('searchServiceSku'), 0, 2))]]",
+    "skuFamily": "[take(parameters('sku'), 1)]"
+  },
     "resources": [
         {
             "type": "Microsoft.Storage/storageAccounts",
@@ -535,26 +536,26 @@
                 }
             ]
         },
-        {
-            "type": "Microsoft.CognitiveServices/accounts",
-            "apiVersion": "2017-04-18",
-            "name": "[variables('qnaMakerAccountName')]",
-            "location": "[parameters('location')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
-                "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
-                "[resourceId('microsoft.insights/components/', variables('qnaMakerAppInsightsName'))]"
-            ],
-            "sku": {
-                "name": "[variables('qnaMakerSkuValue')]"
-            },
-            "kind": "QnAMaker",
-            "properties": {
-                "apiProperties": {
-                    "qnaRuntimeEndpoint": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
-                }
-            }
+      {
+        "type": "Microsoft.CognitiveServices/accounts",
+        "apiVersion": "2017-04-18",
+        "name": "[variables('qnaMakerAccountName')]",
+        "location": "[variables('qnaMakerLocation')]",
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
+          "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
+          "[resourceId('microsoft.insights/components/', variables('qnaMakerAppInsightsName'))]"
+        ],
+        "sku": {
+          "name": "[variables('qnaMakerSkuValue')]"
+        },
+        "kind": "QnAMaker",
+        "properties": {
+          "apiProperties": {
+            "qnaRuntimeEndpoint": "[concat('https://', reference(resourceId('Microsoft.Web/sites', variables('qnaMakerAppServiceName'))).hostNames[0])]"
+          }
         }
+      }
     ],
     "outputs": {
         "botId": {
