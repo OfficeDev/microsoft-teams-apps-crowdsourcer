@@ -539,7 +539,7 @@
             "type": "Microsoft.CognitiveServices/accounts",
             "apiVersion": "2017-04-18",
             "name": "[variables('qnaMakerAccountName')]",
-            "location": "[parameters('location')]",
+            "location": "westus",
             "dependsOn": [
                 "[resourceId('Microsoft.Web/Sites', variables('qnaMakerAppServiceName'))]",
                 "[resourceId('Microsoft.Search/searchServices/', variables('azureSearchName'))]",
